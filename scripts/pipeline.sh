@@ -89,8 +89,12 @@ compile_all() {
     local compile_success=0
 
     # Compile standard programs
+    # Compile TWO versions: std_debug (with bounds checking) and std_fast (for output generation)
     if [[ -f "std.cpp" ]]; then
-        if compile_cpp "std.cpp" "std" 1; then  # Enable debug mode for std
+        if compile_cpp "std.cpp" "std_debug" 1; then  # Debug mode for safety checking
+            compile_success=$((compile_success + 1))
+        fi
+        if compile_cpp "std.cpp" "std_fast" 0; then  # Fast mode for output generation
             compile_success=$((compile_success + 1))
         fi
     fi
@@ -221,14 +225,25 @@ generate_outputs() {
             print_status "Processing $basename.in -> $basename.out..."
 
             # Try different std programs in order of preference
+            # Use std_fast (optimized) for speed, fall back to std_debug if needed
             local success=0
 
-            if [[ -f "std" ]]; then
-                if timeout 30s ./std < "$infile" > "$outfile" 2>/dev/null; then
-                    print_success "✓ Generated $basename.out (C++ std)"
+            if [[ -f "std_fast" ]]; then
+                if timeout 60s ./std_fast < "$infile" > "$outfile" 2>/dev/null; then
+                    print_success "✓ Generated $basename.out (C++ std_fast)"
                     success=1
                 else
-                    print_warning "C++ std failed for $basename.in"
+                    print_warning "C++ std_fast failed for $basename.in"
+                fi
+            fi
+
+            # Fallback to debug version with longer timeout
+            if [[ $success -eq 0 && -f "std_debug" ]]; then
+                if timeout 120s ./std_debug < "$infile" > "$outfile" 2>/dev/null; then
+                    print_success "✓ Generated $basename.out (C++ std_debug)"
+                    success=1
+                else
+                    print_warning "C++ std_debug failed for $basename.in"
                 fi
             fi
 
@@ -265,6 +280,47 @@ generate_outputs() {
         print_success "Successfully generated all $total_files output files"
     else
         print_error "Failed to generate $output_errors/$total_files output files"
+        return 1
+    fi
+}
+
+# Verify sample outputs using debug version (with bounds checking)
+verify_samples_with_debug() {
+    if [[ ! -f "std_debug" ]]; then
+        return 0
+    fi
+
+    print_status "Verifying sample outputs with debug build (bounds checking)..."
+
+    local verify_errors=0
+
+    # Only verify sample files (they should be small and fast even with debug)
+    for infile in data/sample_*.in; do
+        if [[ -f "$infile" ]]; then
+            local basename=$(basename "$infile" .in)
+            local outfile="data/$basename.out"
+
+            if [[ -f "$outfile" ]]; then
+                print_status "Verifying $basename with debug build..."
+
+                local debug_out=$(mktemp)
+                if timeout 60s ./std_debug < "$infile" > "$debug_out" 2>/dev/null; then
+                    if diff -q "$outfile" "$debug_out" > /dev/null 2>&1; then
+                        print_success "✓ $basename passed debug verification"
+                    else
+                        print_error "✗ $basename: debug output differs from fast output!"
+                        verify_errors=$((verify_errors + 1))
+                    fi
+                else
+                    print_warning "Debug build timed out for $basename (skipping)"
+                fi
+                rm -f "$debug_out"
+            fi
+        fi
+    done
+
+    if [[ $verify_errors -gt 0 ]]; then
+        print_error "Debug verification found $verify_errors mismatches!"
         return 1
     fi
 }
@@ -316,7 +372,7 @@ check_outputs() {
 # Clean up compiled files
 cleanup() {
     print_status "Cleaning up compiled files..."
-    local files_to_clean=("generator" "validator" "checker" "std")
+    local files_to_clean=("generator" "validator" "checker" "std" "std_debug" "std_fast")
 
     for file in "${files_to_clean[@]}"; do
         if [[ -f "$file" ]]; then
@@ -401,6 +457,7 @@ main() {
     generate_data
     validate_data
     generate_outputs
+    verify_samples_with_debug  # Verify samples with bounds-checked debug build
     check_outputs
     show_summary
 

@@ -36,6 +36,9 @@ Create `problems/problem-name/statement.md` following this structure:
 第一行包含...
 第二行包含...
 
+**数据范围：**
+对于 $100\%$ 的数据，保证 $1 \le n \le 10^4$，$1 \le a_i \le 10^9$。
+
 ## 输出格式
 [详细说明输出格式]
 
@@ -66,9 +69,6 @@ Create `problems/problem-name/statement.md` following this structure:
 
 **样例 2 解释：**
 [解释样例 2 的输入输出关系]
-
-**数据范围：**
-对于 $100\%$ 的数据，保证 $1 \le n \le 10^4$，$1 \le a_i \le 10^9$。
 ```
 
 **CRITICAL Statement Writing Rules:**
@@ -81,7 +81,7 @@ Create `problems/problem-name/statement.md` following this structure:
 3. **Maximum 2 Sample Cases**: No more than 2 sample test cases
 4. **Sample Explanations in 提示 Section**: Put all sample explanations in the "提示" section, NOT after each sample
 5. **No Algorithm Hints**: Do NOT give hints about algorithms, time complexity, or solution approaches in the "提示" section
-6. **Data Range**: Clearly specify all constraints in the "数据范围" part of "提示" section
+6. **Data Range in 输入格式 Section**: Put data range ("数据范围") at the END of "输入格式" section, NOT in "提示" section
 
 ### Step 3: Write Standard Solution (std.cpp)
 
@@ -254,6 +254,15 @@ EOF
 - Test files: Descriptive names WITHOUT `sample_` prefix
   - Examples: `small_1.in`, `medium_1.in`, `large_1.in`, `edge_max.in`, `random_1.in`
 - Output files: Same base name with `.out` extension (e.g., `small_1.in` → `small_1.out`)
+
+**Test Case Count Rule:**
+- The number of **non-sample** test cases MUST be divisible by 100
+- This ensures each test case has an integer point value (e.g., 20 cases = 5 points each, 25 cases = 4 points each)
+- Example distributions:
+  - 20 test cases: 5 points each (recommended)
+  - 25 test cases: 4 points each
+  - 10 test cases: 10 points each
+- Sample test cases (sample_1, sample_2) do NOT count toward points
 
 ### Step 7: Run the Pipeline
 
